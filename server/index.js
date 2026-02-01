@@ -1,15 +1,26 @@
 /**
- * Bot Bridge Server
+ * Bot Bridge Server (WebSocket 版本)
  *
- * HTTP API 服务，用于 OpenClaw bots 之间传递消息
+ * HTTP API + WebSocket 服务，用于 OpenClaw bots 之间实时通信
  */
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
 const path = require('path');
+const http = require('http');
+const WebSocket = require('ws');
 
 const app = express();
 const DB_PATH = process.env.TEST_DB_PATH || path.join(__dirname, 'messages.db');
+
+// 创建 HTTP 服务器
+const server = http.createServer(app);
+
+// 创建 WebSocket 服务器
+const wss = new WebSocket.Server({ server });
+
+// 存储 WebSocket 连接
+const connections = new Map(); // botId -> WebSocket
 
 // 中间件
 app.use(cors());
@@ -32,25 +43,192 @@ db.serialize(() => {
   )`);
 
   // 创建索引加速查询
-  db.run(`CREATE INDEX IF NOT EXISTS idx_recipient_status 
+  db.run(`CREATE INDEX IF NOT EXISTS idx_recipient_status
           ON messages(recipient, status)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_sender 
+  db.run(`CREATE INDEX IF NOT EXISTS idx_sender
           ON messages(sender)`);
 });
 
-// API 端点
+// === WebSocket 连接处理 ===
+
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const botId = url.searchParams.get('bot_id');
+
+  if (!botId) {
+    ws.close(1008, 'Missing bot_id parameter');
+    return;
+  }
+
+  console.log(`[WebSocket] Bot connected: ${botId}`);
+
+  // 存储连接
+  connections.set(botId, ws);
+
+  // 发送连接成功消息
+  ws.send(JSON.stringify({
+    type: 'connected',
+    botId,
+    timestamp: new Date().toISOString()
+  }));
+
+  // 处理消息
+  ws.on('message', (data) => {
+    try {
+      const message = JSON.parse(data);
+      handleWebSocketMessage(botId, message, ws);
+    } catch (err) {
+      console.error(`[WebSocket] Invalid message from ${botId}:`, err);
+    }
+  });
+
+  // 处理连接关闭
+  ws.on('close', () => {
+    console.log(`[WebSocket] Bot disconnected: ${botId}`);
+    connections.delete(botId);
+  });
+
+  // 处理错误
+  ws.on('error', (err) => {
+    console.error(`[WebSocket] Error for ${botId}:`, err);
+  });
+
+  // 发送未读消息
+  sendUnreadMessages(botId, ws);
+});
+
+/**
+ * 处理 WebSocket 消息
+ */
+function handleWebSocketMessage(sender, message, ws) {
+  switch (message.type) {
+    case 'send':
+      // 发送消息给其他 bot
+      sendToRecipient(message);
+      // 存储到数据库
+      saveMessageToDB(message);
+      break;
+
+    case 'broadcast':
+      // 广播消息给所有 bot（除了发送者）
+      broadcastMessage(sender, message);
+      break;
+
+    case 'ack':
+      // 消息确认
+      markMessageAsRead(message.messageId);
+      break;
+
+    case 'ping':
+      ws.send(JSON.stringify({ type: 'pong' }));
+      break;
+
+    default:
+      console.error(`[WebSocket] Unknown message type: ${message.type}`);
+  }
+}
+
+/**
+ * 发送消息给指定 recipient
+ */
+function sendToRecipient(message) {
+  const { recipient, content, metadata = {} } = message;
+  const ws = connections.get(recipient);
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'message',
+      sender: message.sender,
+      content,
+      metadata,
+      timestamp: new Date().toISOString()
+    }));
+  }
+}
+
+/**
+ * 广播消息给所有 bot（除了发送者）
+ */
+function broadcastMessage(sender, message) {
+  const { content, metadata = {} } = message;
+
+  connections.forEach((ws, botId) => {
+    if (botId !== sender && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({
+        type: 'message',
+        sender,
+        content,
+        metadata,
+        timestamp: new Date().toISOString()
+      }));
+    }
+  });
+}
+
+/**
+ * 保存消息到数据库
+ */
+function saveMessageToDB(message) {
+  const { sender, recipient, content, metadata = {} } = message;
+  const id = `${sender}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  db.run(
+    `INSERT INTO messages (id, sender, recipient, content, metadata)
+     VALUES (?, ?, ?, ?, ?)`,
+    [id, sender, recipient, content, JSON.stringify(metadata)],
+    (err) => {
+      if (err) console.error('[DB] Insert error:', err);
+    }
+  );
+}
+
+/**
+ * 发送未读消息
+ */
+function sendUnreadMessages(botId, ws) {
+  db.all(
+    `SELECT * FROM messages WHERE recipient = ? AND status = 'unread' ORDER BY created_at ASC LIMIT 50`,
+    [botId],
+    (err, rows) => {
+      if (err) {
+        console.error('[DB] Query error:', err);
+        return;
+      }
+
+      if (rows.length > 0) {
+        const messages = rows.map(row => ({
+          ...row,
+          metadata: row.metadata ? JSON.parse(row.metadata) : {}
+        }));
+
+        ws.send(JSON.stringify({
+          type: 'unread_messages',
+          messages,
+          count: messages.length
+        }));
+      }
+    }
+  );
+}
+
+/**
+ * 标记消息为已读
+ */
+function markMessageAsRead(messageId) {
+  db.run(
+    `UPDATE messages SET status = 'read', read_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [messageId],
+    (err) => {
+      if (err) console.error('[DB] Update error:', err);
+    }
+  );
+}
+
+// === HTTP API 端点 ===
 
 /**
  * POST /api/messages
- * 发送消息
- *
- * Request Body:
- * {
- *   "sender": "xiaoc",
- *   "recipient": "xiaod",
- *   "content": "消息内容",
- *   "metadata": {...}
- * }
+ * 发送消息（HTTP 接口，用于不使用 WebSocket 的情况）
  */
 app.post('/api/messages', (req, res) => {
   const { sender, recipient, content, metadata = {} } = req.body;
@@ -76,6 +254,19 @@ app.post('/api/messages', (req, res) => {
           error: err.message
         });
       }
+
+      // 如果接收者在线，通过 WebSocket 发送
+      const ws = connections.get(recipient);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'message',
+          sender,
+          content,
+          metadata,
+          timestamp: new Date().toISOString()
+        }));
+      }
+
       res.json({
         success: true,
         id,
@@ -87,12 +278,7 @@ app.post('/api/messages', (req, res) => {
 
 /**
  * GET /api/messages
- * 获取消息
- *
- * Query Parameters:
- * - recipient: 目标bot ID
- * - status: unread | read | all (default: unread)
- * - limit: 最多返回数量 (default: 50)
+ * 获取消息（HTTP 接口）
  */
 app.get('/api/messages', (req, res) => {
   const { recipient, status = 'unread', limit = 50 } = req.query;
@@ -123,7 +309,6 @@ app.get('/api/messages', (req, res) => {
       });
     }
 
-    // 解析 metadata
     const messages = rows.map(row => ({
       ...row,
       metadata: row.metadata ? JSON.parse(row.metadata) : {}
@@ -145,9 +330,7 @@ app.post('/api/messages/:id/read', (req, res) => {
   const { id } = req.params;
 
   db.run(
-    `UPDATE messages 
-     SET status = 'read', read_at = CURRENT_TIMESTAMP 
-     WHERE id = ?`,
+    `UPDATE messages SET status = 'read', read_at = CURRENT_TIMESTAMP WHERE id = ?`,
     [id],
     function(err) {
       if (err) {
@@ -171,18 +354,13 @@ app.post('/api/messages/:id/read', (req, res) => {
 
 /**
  * DELETE /api/messages
- * 清理已读消息（可选）
- *
- * Query Parameters:
- * - older_than: 清理多少天前的消息 (default: 7)
+ * 清理已读消息
  */
 app.delete('/api/messages', (req, res) => {
   const { older_than = 7 } = req.query;
 
   db.run(
-    `DELETE FROM messages 
-     WHERE status = 'read' 
-     AND read_at < datetime('now', '-' || ? || ' days')`,
+    `DELETE FROM messages WHERE status = 'read' AND read_at < datetime('now', '-' || ? || ' days')`,
     [older_than],
     function(err) {
       if (err) {
@@ -219,10 +397,24 @@ app.get('/api/status', (req, res) => {
         success: true,
         status: 'running',
         unread_count: row.total,
+        connected_bots: connections.size,
         timestamp: new Date().toISOString()
       });
     }
   );
+});
+
+/**
+ * GET /api/connections
+ * 获取在线 bot 列表
+ */
+app.get('/api/connections', (req, res) => {
+  const bots = Array.from(connections.keys());
+  res.json({
+    success: true,
+    count: bots.length,
+    bots
+  });
 });
 
 // 健康检查
@@ -235,8 +427,9 @@ const HOST = process.env.HOST || '0.0.0.0';
 
 // 仅在直接运行此模块时启动服务器
 if (require.main === module) {
-  app.listen(PORT, HOST, () => {
+  server.listen(PORT, HOST, () => {
     console.log(`Bot Bridge Server running on http://${HOST}:${PORT}`);
+    console.log(`WebSocket endpoint: ws://${HOST}:${PORT}/?bot_id=<your-bot-id>`);
     console.log(`Database: ${DB_PATH}`);
     console.log(`API endpoints:`);
     console.log(`  POST   /api/messages          - 发送消息`);
@@ -244,7 +437,8 @@ if (require.main === module) {
     console.log(`  POST   /api/messages/:id/read - 标记已读`);
     console.log(`  DELETE /api/messages          - 清理消息`);
     console.log(`  GET    /api/status            - 服务状态`);
+    console.log(`  GET    /api/connections       - 在线 bot 列表`);
   });
 }
 
-module.exports = app;
+module.exports = { app, server, wss };

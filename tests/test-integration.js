@@ -80,7 +80,7 @@ const runTests = async () => {
   }
 
   // 现在加载服务器模块
-  const server = require('../server/index');
+  const { app: expressApp, server } = require('../server/index');
   const serverTest = require('./test-server');
   const clientTest = require('./test-client');
 
@@ -90,8 +90,8 @@ const runTests = async () => {
 
   // 启动服务器
   await new Promise((resolve, reject) => {
-    app = server;
-    serverInstance = app.listen(process.env.PORT, () => {
+    app = expressApp;
+    serverInstance = server.listen(process.env.PORT, () => {
       console.log(`Test server running on http://0.0.0.0:${process.env.PORT}`);
       resolve();
     }).on('error', reject);
