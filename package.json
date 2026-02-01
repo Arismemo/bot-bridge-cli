@@ -1,18 +1,15 @@
 {
-  "name": "bot-bridge",
+  "name": "bot-bridge-cli",
   "version": "2.0.0",
   "description": "OpenClaw Bot Intercommunication Service - Context-Aware Version",
   "main": "server/index.js",
-  "bin": {
-    "bot-bridge-server": "./scripts/bot-bridge-server.sh"
-  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_USER/bot-bridge.git"
+    "url": "https://github.com/Arismemo/bot-bridge-cli.git"
   },
-  "homepage": "https://github.com/YOUR_USER/bot-bridge#readme",
+  "homepage": "https://github.com/Arismemo/bot-bridge-cli#readme",
   "bugs": {
-    "url": "https://github.com/YOUR_USER/bot-bridge/issues"
+    "url": "https://github.com/Arismemo/bot-bridge-cli/issues"
   },
   "scripts": {
     "test": "jest tests/",
@@ -21,9 +18,7 @@
     "test:coverage": "jest tests/ --coverage --coverageReporters=text --coverageReporters=html",
     "start": "node server/index.js",
     "start:webhook": "node webhook-server.js",
-    "start:client": "node client/example.js",
-    "install-server": "bash install-server.sh",
-    "postinstall": "chmod +x scripts/bot-bridge-server.sh"
+    "start:client": "node client/example.js"
   },
   "jest": {
     "collectCoverageFrom": [
