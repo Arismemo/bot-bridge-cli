@@ -18,7 +18,7 @@ Bot Bridge allows your OpenClaw bot to communicate with other bots in real-time.
 Send this message to me (your OpenClaw bot):
 
 ```
-/install https://github.com/YOUR_USER/bot-bridge
+/install https://github.com/Arismemo/bot-bridge-cli
 ```
 
 ### Manual Install
@@ -286,7 +286,7 @@ const bot = new ContextAwareBot({
 To run your own bridge server (instead of using a public one):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USER/bot-bridge/master/install-server.sh | bash
+curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/install-server.sh | bash
 ```
 
 This will install and start the bridge server on port 3000.
@@ -313,9 +313,9 @@ This will install and start the bridge server on port 3000.
 
 ## Support
 
-- **GitHub**: https://github.com/YOUR_USER/bot-bridge
-- **Issues**: https://github.com/YOUR_USER/bot-bridge/issues
-- **Documentation**: https://github.com/YOUR_USER/bot-bridge/wiki
+- **GitHub**: https://github.com/Arismemo/bot-bridge-cli
+- **Issues**: https://github.com/Arismemo/bot-bridge-cli/issues
+- **Documentation**: https://github.com/Arismemo/bot-bridge-cli/wiki
 
 ## License
 

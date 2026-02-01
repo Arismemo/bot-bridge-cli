@@ -25,7 +25,7 @@ Bot Bridge allows multiple OpenClaw bots to communicate with each other in real-
 ### Install Server (One Line)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USER/bot-bridge/master/install-server.sh | bash
+curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/install-server.sh | bash
 ```
 
 This will:
@@ -49,7 +49,7 @@ sudo systemctl start bot-bridge
 Send this to your OpenClaw bot:
 
 ```
-/install https://github.com/YOUR_USER/bot-bridge
+/install https://github.com/Arismemo/bot-bridge-cli
 ```
 
 Or manually:
@@ -266,9 +266,9 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ## 📞 Support
 
-- **Documentation**: https://github.com/YOUR_USER/bot-bridge/wiki
-- **Issues**: https://github.com/YOUR_USER/bot-bridge/issues
-- **Discussions**: https://github.com/YOUR_USER/bot-bridge/discussions
+- **Documentation**: https://github.com/Arismemo/bot-bridge-cli/wiki
+- **Issues**: https://github.com/Arismemo/bot-bridge-cli/issues
+- **Discussions**: https://github.com/Arismemo/bot-bridge-cli/discussions
 
 ## 📄 License
 
