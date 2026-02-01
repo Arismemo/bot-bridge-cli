@@ -1,246 +1,322 @@
-# Bot Bridge Skill - OpenClaw 机器人互通信中转
+# Bot Bridge - OpenClaw Skill
 
-> 上下文感知的多机器人通信系统，支持 Telegram 集成
+> Connect multiple OpenClaw bots for inter-bot communication with context awareness
 
----
+## Overview
 
-## 🚀 部署方式
+Bot Bridge allows your OpenClaw bot to communicate with other bots in real-time. It provides:
+- Real-time WebSocket communication
+- HTTP fallback when WebSocket is unavailable
+- Message persistence with SQLite
+- Context-aware decision making
+- 92% test coverage with easy mocking
 
-### 方式 1: 交互式部署（推荐用于手动部署）
+## Installation
 
-如果你在交互式终端中，可以使用交互式部署：
+### One-Command Install
+
+Send this message to me (your OpenClaw bot):
+
+```
+/install https://github.com/YOUR_USER/bot-bridge
+```
+
+### Manual Install
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot.sh | bash
+clawhub install bot-bridge
 ```
 
-部署脚本会交互式询问以下信息：
-- ✅ 机器人 ID（必填）
-- ✅ Telegram Bot Token（可选）
-- ✅ Telegram 群聊 ID（可选，支持多个）
-- ✅ 中转服务器地址
-- ✅ Webhook 服务端口
-- ✅ 是否立即启动服务
-- ✅ 是否设置 Telegram Webhook
+## Quick Start
 
-### 方式 2: 快速部署（推荐用于 Telegram 对话/非交互式环境）
+### Step 1: Set Environment Variables
 
-如果你通过 Telegram 对话等方式接收指令，使用快速部署：
+Add these to your OpenClaw environment or `.env` file:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot-quick.sh | bash -s -- <BOT_ID> <TELEGRAM_BOT_TOKEN> <TELEGRAM_CHAT_IDS> [BRIDGE_API_URL] [WEBHOOK_PORT]
+# Required
+BRIDGE_API_URL=http://localhost:3000  # Your bridge server URL
+BOT_ID=my-bot                         # Your unique bot ID
+
+# Optional (for Telegram integration)
+TELEGRAM_BOT_TOKEN=your_bot_token      # Telegram bot token
+TELEGRAM_CHAT_IDS=-1001234567890      # Comma-separated chat IDs
 ```
 
-**参数说明：**
-- `BOT_ID` - 机器人 ID（必填）
-- `TELEGRAM_BOT_TOKEN` - Telegram Bot Token（可选）
-- `TELEGRAM_CHAT_IDS` - 群聊 ID（可选，多个用逗号分隔）
-- `BRIDGE_API_URL` - 中转服务器地址（可选，默认 http://localhost:3000）
-- `WEBHOOK_PORT` - Webhook 端口（可选，默认 3001）
-
-**示例：**
-```bash
-curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot-quick.sh | bash -s -- xiaoc 123456:ABC -5094630990 http://localhost:3000 3001
-```
-
----
-
-## 📋 手动部署
-
-如果需要手动配置，按以下步骤操作：
-
-### 1. 安装依赖
-
-```bash
-cd ~/.openclaw/workspace/bot-bridge
-npm install
-```
-
-### 2. 配置环境变量
-
-编辑 `.env` 文件：
-
-```bash
-BRIDGE_API_URL=http://localhost:3000
-BOT_ID=xiaoc
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_IDS=-5094630990
-WEBHOOK_PORT=3001
-```
-
-### 3. 启动 Webhook 服务器
-
-```bash
-# 使用 PM2（推荐）
-pm2 start webhook-server.js --name bot-bridge-xiaoc
-
-# 或使用后台进程
-nohup node webhook-server.js > logs/webhook.log 2>&1 &
-```
-
-### 4. 设置 Telegram Webhook
-
-```bash
-curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
-  -d url=https://your-server.com:3001/telegram-webhook
-```
-
----
-
-## 💡 使用场景
-
-### 场景 1：多机器人协作
-
-```
-你: @小C 帮我查一下天气
-小C: 今天天气晴，温度 25°C
-(同时通知小D)
-小D: 我记录下来了
-```
-
-### 场景 2：跨群聊通信
-
-```
-群聊A: @小C 发消息到群聊B
-小C: 收到，正在发送...
-(发送到群聊B)
-群聊B: 收到来自小C的消息
-```
-
-### 场景 3：上下文感知对话
-
-```
-Jack: 我昨天去了北京
-小C: 北京很好！
-小D: 我也在北京
-Jack: 你们两个怎么会在一起？
-(小C 和小D 都看到了完整对话，可以理解上下文)
-```
-
----
-
-## 🔧 高级配置
-
-### 自定义回复决策
-
-编辑 `webhook-server.js` 中的 `onDecideReply` 函数：
+### Step 2: Basic Usage
 
 ```javascript
-bot.onDecideReply = (context) => {
-  const lastMessage = context[context.length - 1];
+const { BotBridgeClient } = require('bot-bridge/client');
 
-  // 规则 1: @ 提醒时回复
-  if (lastMessage.content.includes(`@${bot.botId}`)) {
-    return { shouldReply: true, reply: '收到提醒！' };
+const client = new BotBridgeClient({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: process.env.BOT_ID,
+  onMessage: (message) => {
+    console.log(`Received from ${message.sender}: ${message.content}`);
   }
+});
 
-  // 规则 2: 其他 bot 消息时可能回复
-  if (lastMessage.source === 'bridge' && Math.random() < 0.3) {
-    return {
-      shouldReply: true,
-      reply: '我看到了！',
-      notifyRecipient: lastMessage.sender
-    };
+// Send a message to another bot
+await client.sendMessage('other-bot', 'Hello there!');
+
+// Broadcast to all connected bots
+client.broadcast('Is anyone listening?');
+```
+
+### Step 3: Context-Aware Bot (Advanced)
+
+```javascript
+const { ContextAwareBot } = require('bot-bridge/client');
+
+const bot = new ContextAwareBot({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: process.env.BOT_ID,
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  telegramChatIds: process.env.TELEGRAM_CHAT_IDS,
+  dbPath: './messages.db',
+
+  // Called when new message arrives
+  onNewMessage: (message) => {
+    console.log(`New message: [${message.source}] ${message.sender}: ${message.content}`);
+  },
+
+  // Decide whether/how to reply based on full context
+  onDecideReply: ({ message, context }) => {
+    const recentMessages = context.slice(-10);
+
+    // Example: Reply to help requests
+    if (message.content.toLowerCase().includes('help')) {
+      return {
+        reply: 'How can I help you today?',
+        recipient: message.sender
+      };
+    }
+
+    // Example: Don't reply to messages from yourself
+    if (message.sender === process.env.BOT_ID) {
+      return null;
+    }
+
+    // Example: Context-aware conversation
+    const mentionsMe = recentMessages.some(m => 
+      m.content.toLowerCase().includes(process.env.BOT_ID.toLowerCase())
+    );
+
+    if (mentionsMe) {
+      return {
+        reply: `Hello ${message.sender}! I'm here.`,
+        recipient: message.sender
+      };
+    }
+
+    // Don't reply by default
+    return null;
   }
+});
 
-  // 规则 3: 人类消息时总是回复
-  if (lastMessage.source === 'telegram') {
-    return { shouldReply: true, reply: '收到！' };
+// Get chat history
+const history = bot.getChatHistory(50);
+console.log(`Recent messages: ${history.length}`);
+```
+
+## API Reference
+
+### BotBridgeClient
+
+#### Constructor Options
+```javascript
+new BotBridgeClient({
+  apiUrl: string,           // Bridge server URL (required)
+  botId: string,            // Your bot ID (required)
+  httpOnly: boolean,        // Skip WebSocket, use HTTP only (optional)
+  wsClient: IWebSocketClient,  // Custom WebSocket client for testing (optional)
+  httpClient: IHttpClient,      // Custom HTTP client for testing (optional)
+  onMessage: function,       // Callback for incoming messages (optional)
+  onConnectionChange: function,  // Callback for connection state (optional)
+  onError: function         // Callback for errors (optional)
+})
+```
+
+#### Methods
+
+| Method | Returns | Description |
+|--------|----------|-------------|
+| `sendMessage(recipient, content, metadata?)` | Promise\<object\> | Send message to specific bot |
+| `broadcast(content, metadata?)` | object | Broadcast to all connected bots |
+| `healthCheck()` | Promise\<boolean\> | Check server health |
+| `getStatus()` | Promise\<object\> | Get server status |
+| `getConnectedBots()` | Promise\<object\> | List connected bots |
+| `getUnreadMessages()` | Promise\<object\> | Get unread messages |
+| `markAsRead(messageId)` | Promise\<object\> | Mark message as read |
+| `replyTo(message, content, metadata?)` | Promise\<object\> | Reply to original message |
+| `disconnect()` | void | Disconnect from server |
+
+### ContextAwareBot
+
+#### Constructor Options
+```javascript
+new ContextAwareBot({
+  apiUrl: string,              // Bridge server URL (required)
+  botId: string,               // Your bot ID (required)
+  telegramBotToken: string,     // Telegram bot token (optional)
+  telegramChatIds: string,      // Comma-separated chat IDs (optional)
+  dbPath: string,              // SQLite database path (optional)
+  bridge: BotBridgeClient,      // Custom bridge for testing (optional)
+  db: IDatabaseClient,         // Custom database for testing (optional)
+  onNewMessage: function,       // Callback for new messages (optional)
+  onDecideReply: function,     // Context-aware reply logic (optional)
+})
+```
+
+#### Methods
+
+| Method | Returns | Description |
+|--------|----------|-------------|
+| `addMessage(message)` | Promise\<void\> | Add message to storage |
+| `getChatHistory(limit?)` | array\<message\> | Get chat history |
+| `sendMessage(recipient, content, metadata?)` | Promise\<object\> | Send via bridge |
+| `broadcast(content, metadata?)` | object | Broadcast via bridge |
+| `handleTelegramMessage(message)` | void | Process Telegram message |
+| `disconnect()` | void | Disconnect from bridge |
+
+## Testing
+
+The library is designed for easy testing with dependency injection:
+
+```javascript
+const { BotBridgeClient } = require('bot-bridge/client');
+const MockWebSocket = require('bot-bridge/tests/mocks/MockWebSocketClient');
+const MockHttpClient = require('bot-bridge/tests/mocks/MockHttpClient');
+
+// Create mock clients
+const mockWs = new MockWebSocketClient();
+const mockHttp = new MockHttpClient();
+
+// Create bot with mocked dependencies
+const client = new BotBridgeClient({
+  apiUrl: 'http://localhost:3000',
+  botId: 'test-bot',
+  wsClient: mockWs,
+  httpClient: mockHttp,
+  httpOnly: true
+});
+
+// Now you can test without real WebSocket or HTTP connections!
+mockWs.simulateReceiveMessage({
+  type: 'message',
+  sender: 'other-bot',
+  content: 'Hello!'
+});
+
+// Check what was sent
+console.log(mockWs.sentMessages);
+```
+
+## Examples
+
+### Send a message when specific command is received
+
+```javascript
+const { BotBridgeClient } = require('bot-bridge/client');
+
+const client = new BotBridgeClient({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: process.env.BOT_ID,
+  onMessage: (message) => {
+    if (message.content.startsWith('/ping')) {
+      client.replyTo(message, 'Pong!');
+    }
   }
-
-  return null; // 不回复
-};
+});
 ```
 
-修改后重启服务：
+### Coordinate multiple bots
+
+```javascript
+const { BotBridgeClient } = require('bot-bridge/client');
+
+const bot1 = new BotBridgeClient({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: 'bot-1',
+  onMessage: async (msg) => {
+    if (msg.content === 'task:process') {
+      // Do some work...
+      await bot1.sendMessage('bot-2', 'task:complete');
+    }
+  }
+});
+
+const bot2 = new BotBridgeClient({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: 'bot-2',
+  onMessage: (msg) => {
+    if (msg.content === 'task:complete') {
+      console.log('Task completed by bot-1');
+    }
+  }
+});
+```
+
+### Use with Telegram groups
+
+```javascript
+const { ContextAwareBot } = require('bot-bridge/client');
+
+const bot = new ContextAwareBot({
+  apiUrl: process.env.BRIDGE_API_URL,
+  botId: process.env.BOT_ID,
+  telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  telegramChatIds: process.env.TELEGRAM_CHAT_IDS,
+
+  onDecideReply: ({ message, context }) => {
+    // Reply to @mentions in the group
+    if (message.content.includes(`@${process.env.BOT_ID}`)) {
+      return {
+        reply: 'You called?',
+        recipient: message.sender
+      };
+    }
+    return null;
+  }
+});
+```
+
+## Server Installation
+
+To run your own bridge server (instead of using a public one):
+
 ```bash
-pm2 restart bot-bridge-<BOT_ID>
+curl -sSL https://raw.githubusercontent.com/YOUR_USER/bot-bridge/master/install-server.sh | bash
 ```
 
----
+This will install and start the bridge server on port 3000.
 
-## 🐛 故障排除
+## Troubleshooting
 
-### Q: Webhook 收不到消息？
+### Connection fails
 
-A: 检查：
-1. Webhook URL 是否正确设置：`curl https://api.telegram.org/bot<TOKEN>/getWebhookInfo`
-2. 服务器是否可从外网访问
-3. 防火墙是否开放端口：`sudo ufw allow <WEBHOOK_PORT>`
-4. Telegram 要求 Webhook 使用 HTTPS（公网部署）
+1. Check if server is running: `curl http://localhost:3000/health`
+2. Verify `BRIDGE_API_URL` is correct
+3. Check firewall settings
 
-**使用 ngrok 测试：**
-```bash
-# 1. 安装 ngrok: https://ngrok.com/download
-# 2. 启动隧道
-ngrok http <WEBHOOK_PORT>
-# 3. 使用 ngrok 提供的 URL 设置 Webhook
-curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
-  -d url=https://<ngrok-url>/telegram-webhook
-```
+### Messages not received
 
-### Q: 上下文不完整？
+1. Verify both bots are connected: `await client.getConnectedBots()`
+2. Check bot IDs are correct
+3. Look for error messages in logs
 
-A: 检查：
-1. Bot 是否被添加到群聊
-2. `TELEGRAM_CHAT_IDS` 配置是否正确
-3. 查看日志：`pm2 logs bot-bridge-<BOT_ID>`
+### Database errors
 
-### Q: 消息没有同步到其他 bot？
+1. Ensure you have write permissions for `dbPath`
+2. Check disk space
+3. Try deleting the database file and letting it recreate
 
-A: 检查：
-1. 其他 bot 是否连接到同一中转服务器
-2. Bot ID 是否配置正确
-3. WebSocket 连接状态：`curl http://localhost:3001/health`
+## Support
 
-### Q: 如何重启服务？
+- **GitHub**: https://github.com/YOUR_USER/bot-bridge
+- **Issues**: https://github.com/YOUR_USER/bot-bridge/issues
+- **Documentation**: https://github.com/YOUR_USER/bot-bridge/wiki
 
-A:
-```bash
-# PM2 方式
-pm2 restart bot-bridge-<BOT_ID>
+## License
 
-# 后台进程方式
-pkill -f "webhook-server.js.*BOT_ID=<BOT_ID>"
-node webhook-server.js &
-```
-
-### Q: 如何卸载？
-
-A:
-```bash
-# 停止服务
-pm2 stop bot-bridge-<BOT_ID>
-pm2 delete bot-bridge-<BOT_ID>
-
-# 删除代码
-rm -rf ~/.openclaw/workspace/bot-bridge
-
-# 移除 Telegram Webhook
-curl -X POST https://api.telegram.org/bot<TOKEN>/deleteWebhook
-```
-
----
-
-## 📚 相关链接
-
-- **GitHub**: https://github.com/Arismemo/bot-bridge
-- **完整文档**: https://github.com/Arismemo/bot-bridge#readme
-- **Telegram Bot API**: https://core.telegram.org/bots/api
-- **问题反馈**: https://github.com/Arismemo/bot-bridge/issues
-
----
-
-## 🎯 快速命令参考
-
-| 命令 | 说明 |
-|------|------|
-| `pm2 status` | 查看所有服务状态 |
-| `pm2 logs bot-bridge-<BOT_ID>` | 查看日志 |
-| `pm2 restart bot-bridge-<BOT_ID>` | 重启服务 |
-| `pm2 stop bot-bridge-<BOT_ID>` | 停止服务 |
-| `curl http://localhost:<PORT>/health` | 健康检查 |
-
----
-
-**需要帮助？** 联系 Jack 或在 GitHub 提 issue。
+MIT

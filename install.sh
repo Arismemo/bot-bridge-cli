@@ -111,8 +111,8 @@ read -p "是否立即启动服务? (Y/n) " -n 1 -r
 echo
 if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     echo ""
-    echo "🚀 启动中转服务器..."
-    pm2 start server/index.js --name bot-bridge-server || {
+    echo "🚀 启动中转服务器 (bot-bridge-server)..."
+    pm2 start server/index.js --name bot-bridge-server || {\
         echo "⚠️  PM2 未安装，使用 npm start 启动（需要手动管理进程）"
         npm start &
         SERVER_PID=$!
@@ -120,12 +120,21 @@ if [[ ! $REPLY =~ ^[Nn]$ ]]; then
     }
 
     echo ""
-    echo "🚀 启动 Webhook 服务器..."
-    pm2 start webhook-server.js --name bot-bridge-webhook || {
+    echo "🚀 启动 Webhook 服务器 (bot-bridge-webhook)..."
+    pm2 start webhook-server.js --name bot-bridge-webhook || {\
         echo "⚠️  PM2 未安装，使用 node webhook-server.js 启动"
         node webhook-server.js &
         WEBHOOK_PID=$!
         echo "Webhook PID: $WEBHOOK_PID"
+    }
+
+    echo ""
+    echo "🚀 启动客户端 (bot-bridge-client)..."
+    pm2 start client/index.js --name bot-bridge-client || {\
+        echo "⚠️  PM2 未安装，使用 node client/index.js 启动"
+        node client/index.js &
+        CLIENT_PID=$!
+        echo "客户端 PID: $CLIENT_PID"
     }
 
     echo ""
@@ -144,7 +153,7 @@ if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
             RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
                 -d "url=$WEBHOOK_URL")
 
-            if echo "$RESPONSE" | grep -q '"ok":true'; then
+            if echo "$RESPONSE" | grep -q '\"ok\":true'; then
                 echo "✅ Webhook 设置成功！"
             else
                 echo "❌ Webhook 设置失败:"

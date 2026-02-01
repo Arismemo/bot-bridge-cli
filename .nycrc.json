@@ -1,0 +1,21 @@
+{
+  "include": [
+    "client/**/*.js",
+    "server/**/*.js",
+    "webhook-server.js"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/tests/**",
+    "**/test/**"
+  ],
+  "reporter": [
+    "text",
+    "html",
+    "lcov"
+  ],
+  "all": true,
+  "check-coverage": false,
+  "sourceMap": false,
+  "instrument": true
+}

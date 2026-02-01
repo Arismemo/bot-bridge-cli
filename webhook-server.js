@@ -97,21 +97,41 @@ app.get('/health', (req, res) => {
 
 // 启动服务器
 const port = process.env.WEBHOOK_PORT || 3001;
-const server = app.listen(port, () => {
-  console.log(`[Webhook] Server running on port ${port}`);
-  console.log(`[Webhook] Bot ID: ${bot.botId}`);
-  console.log(`[Webhook] Chat IDs: ${bot.telegramChatIds.join(', ')}`);
-  console.log(`[Webhook] Telegram Webhook endpoint: http://your-server:${port}/telegram-webhook`);
-});
+let server; // 确保 server 在 if 外部声明
 
-// 优雅关闭
+if (require.main === module) { // 只有在直接运行时才启动服务器
+  server = app.listen(port, () => {
+    console.log(`[Webhook] Server running on port ${port}`);
+    console.log(`[Webhook] Bot ID: ${bot.botId}`);
+    console.log(`[Webhook] Chat IDs: ${bot.telegramChatIds.join(', ')}`);
+    console.log(`[Webhook] Telegram Webhook endpoint: http://your-server:${port}/telegram-webhook`);
+  });
+} else {
+  // 当被 require 时，不启动服务器，但仍然可以访问 app 和 bot 实例
+  // server 变量在这里仍然需要被赋值，以便 module.exports 能够导出它
+  server = {
+      close: (cb) => { // 提供一个模拟的 close 方法
+          console.log('[Webhook] Mock server close called.');
+          cb();
+      },
+      address: () => ({port: port}) // 添加 address 方法以模拟真实的 server 对象
+  };
+}
+
+// 优雅关闭 (这部分需要使用我们声明的 server 变量)
 process.on('SIGTERM', () => {
   console.log('[Webhook] SIGTERM received, shutting down...');
-  server.close(() => {
-    bot.disconnect();
-    console.log('[Webhook] Server closed');
+  if (server && typeof server.close === 'function') { // 确保 server 存在且有 close 方法
+    server.close(() => {
+      bot.disconnect();
+      console.log('[Webhook] Server closed');
+      process.exit(0);
+    });
+  } else {
+    console.log('[Webhook] Server not running or has no close method during SIGTERM.');
     process.exit(0);
-  });
+  }
+
 
   setTimeout(() => {
     console.error('[Webhook] Forcing shutdown...');
@@ -119,4 +139,4 @@ process.on('SIGTERM', () => {
   }, 10000);
 });
 
-module.exports = { app, bot };
+module.exports = { app, bot, server }; // 导出 server 实例

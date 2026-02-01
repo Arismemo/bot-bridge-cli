@@ -1,5 +1,6 @@
 const { BotBridgeClient } = require('../client/index'); // 确保正确导入 BotBridgeClient
 
+// 将所有测试逻辑封装在一个函数中并导出
 function runClientTests() {
   let client;
 

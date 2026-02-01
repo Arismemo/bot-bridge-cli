@@ -441,4 +441,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { app, server, wss };
+module.exports = { app, server, wss, connections };

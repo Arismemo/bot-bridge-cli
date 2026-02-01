@@ -5,6 +5,7 @@ const path = require('path');
 // 使用和 test-integration.js 相同的数据库路径
 const DB_PATH = path.join(__dirname, 'test-messages.db');
 
+// 将所有测试逻辑封装在一个函数中并导出
 function runServerTests() {
   let app;
 
@@ -238,4 +239,5 @@ function runServerTests() {
   });
 }
 
+// 导出函数而不是立即执行
 module.exports = runServerTests;
