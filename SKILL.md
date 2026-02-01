@@ -1,14 +1,16 @@
 # Bot Bridge Skill - OpenClaw 机器人互通信中转
 
-> 上下文感知的多机器人通信系统，支持 Telegram 群聊集成
+> 上下文感知的多机器人通信系统，支持 Telegram 集成
 
 ---
 
-## 🚀 一键部署（推荐）
+## 🚀 部署方式
 
-只需执行以下命令，通过交互式配置完成所有部署：
+### 方式 1: 交互式部署（推荐用于手动部署）
 
-```
+如果你在交互式终端中，可以使用交互式部署：
+
+```bash
 curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot.sh | bash
 ```
 
@@ -21,12 +23,25 @@ curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bo
 - ✅ 是否立即启动服务
 - ✅ 是否设置 Telegram Webhook
 
-**执行示例：**
+### 方式 2: 快速部署（推荐用于 Telegram 对话/非交互式环境）
+
+如果你通过 Telegram 对话等方式接收指令，使用快速部署：
+
 ```bash
-curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot.sh | bash
+curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot-quick.sh | bash -s -- <BOT_ID> <TELEGRAM_BOT_TOKEN> <TELEGRAM_CHAT_IDS> [BRIDGE_API_URL] [WEBHOOK_PORT]
 ```
 
-然后按照提示输入配置信息即可。
+**参数说明：**
+- `BOT_ID` - 机器人 ID（必填）
+- `TELEGRAM_BOT_TOKEN` - Telegram Bot Token（可选）
+- `TELEGRAM_CHAT_IDS` - 群聊 ID（可选，多个用逗号分隔）
+- `BRIDGE_API_URL` - 中转服务器地址（可选，默认 http://localhost:3000）
+- `WEBHOOK_PORT` - Webhook 端口（可选，默认 3001）
+
+**示例：**
+```bash
+curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge/master/deploy-bot-quick.sh | bash -s -- xiaoc 123456:ABC -5094630990 http://localhost:3000 3001
+```
 
 ---
 
@@ -46,7 +61,7 @@ npm install
 编辑 `.env` 文件：
 
 ```bash
-BRIDGE_API_URL=https://bridge.moltbook.com
+BRIDGE_API_URL=http://localhost:3000
 BOT_ID=xiaoc
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_IDS=-5094630990
@@ -142,13 +157,6 @@ bot.onDecideReply = (context) => {
 pm2 restart bot-bridge-<BOT_ID>
 ```
 
-### 消息持久化
-
-当前版本使用内存存储消息，重启会丢失。如需持久化，可以：
-
-1. **SQLite 持久化**：修改 `ContextAwareBot` 类，添加 `saveMessages()` 和 `loadMessages()` 方法
-2. **Redis 持久化**：使用 Redis 存储消息，支持分布式部署
-
 ---
 
 ## 🐛 故障排除
@@ -159,6 +167,17 @@ A: 检查：
 1. Webhook URL 是否正确设置：`curl https://api.telegram.org/bot<TOKEN>/getWebhookInfo`
 2. 服务器是否可从外网访问
 3. 防火墙是否开放端口：`sudo ufw allow <WEBHOOK_PORT>`
+4. Telegram 要求 Webhook 使用 HTTPS（公网部署）
+
+**使用 ngrok 测试：**
+```bash
+# 1. 安装 ngrok: https://ngrok.com/download
+# 2. 启动隧道
+ngrok http <WEBHOOK_PORT>
+# 3. 使用 ngrok 提供的 URL 设置 Webhook
+curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
+  -d url=https://<ngrok-url>/telegram-webhook
+```
 
 ### Q: 上下文不完整？
 
