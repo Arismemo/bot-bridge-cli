@@ -50,7 +50,22 @@ npm start
 # WebSocket: ws://localhost:3000/?bot_id=<your-bot-id>
 ```
 
-### 3. 配置并启动客户端
+### 3. 启动 Webhook 服务器（用于接收 Telegram 消息）
+
+```bash
+npm run start:webhook
+# Webhook 服务器运行在 http://localhost:3001
+# Telegram Webhook 端点: http://localhost:3001/telegram-webhook
+```
+
+### 4. 设置 Telegram Webhook
+
+```bash
+curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
+  -d url=https://your-server.com:3001/telegram-webhook
+```
+
+### 5. 配置并启动客户端
 
 ```bash
 # 支持多个群聊，用逗号分隔
@@ -76,6 +91,7 @@ npm run start:client
 | `BOT_ID` | Bot 唯一标识 | required |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot Token | optional |
 | `TELEGRAM_CHAT_IDS` | 群聊 ID（支持多个，逗号分隔）| optional |
+| `WEBHOOK_PORT` | Webhook 服务端口 | 3001 |
 
 ---
 
@@ -146,6 +162,37 @@ app.post('/telegram-webhook', (req, res) => {
 
   res.sendStatus(200);
 });
+```
+
+### 使用内置 Webhook 服务器
+
+项目提供了开箱即用的 Webhook 服务器 `webhook-server.js`：
+
+**启动方式：**
+```bash
+npm run start:webhook
+```
+
+**环境变量：**
+```bash
+WEBHOOK_PORT=3001  # Webhook 端口（默认 3001）
+```
+
+**功能：**
+- 自动接收 Telegram 消息
+- 转发给 `ContextAwareBot` 处理
+- 健康检查端点：`/health`
+
+**设置 Telegram Webhook：**
+```bash
+curl -X POST https://api.telegram.org/bot<TOKEN>/setWebhook \
+  -d url=https://your-server.com:3001/telegram-webhook
+```
+
+**使用 PM2 管理进程：**
+```bash
+pm2 start webhook-server.js --name bot-bridge-webhook
+pm2 save
 ```
 
 ### 获取完整聊天记录
