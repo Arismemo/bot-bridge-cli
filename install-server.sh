@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bot Bridge Server One-Click Install Script
-# Usage: curl -sSL https://raw.githubusercontent.com/YOUR_USER/bot-bridge/master/install-server.sh | bash
+# Usage: curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/install-server.sh | bash
 
 set -e
 
@@ -16,7 +16,7 @@ NC='\033[0m' # No Color
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     OS="linux"
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
+elif [[ "$OSTYPE" == "darwin"* ]]; then
     OS="macos"
 else
     echo -e "${RED}Unsupported OS: $OSTYPE${NC}"
@@ -48,20 +48,33 @@ else
     echo -e "${GREEN}✓ Git installed${NC}"
 fi
 
-# Install bot-bridge globally
+# Install bot-bridge from GitHub
+INSTALL_DIR="$HOME/.bot-bridge"
 echo ""
-echo "📦 Installing bot-bridge..."
-npm install -g bot-bridge
+echo "📦 Installing bot-bridge from GitHub to $INSTALL_DIR..."
 
-# Check installation
-if command -v bot-bridge-server &> /dev/null; then
-    echo -e "${GREEN}✓ bot-bridge-server installed successfully${NC}"
-else
-    # Create symlink manually
-    echo "Creating symlink..."
-    sudo ln -sf $(npm root -g)/bot-bridge/scripts/bot-bridge-server.sh /usr/local/bin/bot-bridge-server
-    sudo chmod +x /usr/local/bin/bot-bridge-server
+# Remove old installation if exists
+if [[ -d "$INSTALL_DIR" ]]; then
+    echo "Removing old installation..."
+    rm -rf "$INSTALL_DIR"
 fi
+
+# Clone repository
+git clone https://github.com/Arismemo/bot-bridge-cli.git "$INSTALL_DIR"
+
+# Install dependencies
+echo "Installing dependencies..."
+cd "$INSTALL_DIR"
+npm install --production
+
+# Make scripts executable
+chmod +x scripts/bot-bridge-server.sh
+
+# Create symlink
+echo ""
+echo "🔗 Creating bot-bridge-server command..."
+sudo ln -sf "$INSTALL_DIR/scripts/bot-bridge-server.sh" /usr/local/bin/bot-bridge-server
+echo -e "${GREEN}✓ bot-bridge-server command created${NC}"
 
 # Create systemd service (Linux only)
 if [[ "$OS" == "linux" ]]; then
@@ -75,11 +88,13 @@ After=network.target
 [Service]
 Type=simple
 User=$USER
-WorkingDirectory=$HOME/.bot-bridge
-ExecStart=/usr/bin/node server/index.js
+WorkingDirectory=$INSTALL_DIR
+ExecStart=/usr/bin/node $INSTALL_DIR/server/index.js
 Restart=always
 RestartSec=10
 Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=DB_PATH=$INSTALL_DIR/messages.db
 
 [Install]
 WantedBy=multi-user.target
@@ -90,22 +105,18 @@ EOF
     echo -e "${GREEN}✓ Systemd service created${NC}"
 fi
 
-# Create config directory
-CONFIG_DIR="$HOME/.bot-bridge"
-mkdir -p "$CONFIG_DIR"
-
 # Create default config
-if [[ ! -f "$CONFIG_DIR/.env" ]]; then
+if [[ ! -f "$INSTALL_DIR/.env" ]]; then
     echo ""
     echo "📝 Creating default configuration..."
-    cat <<EOF > "$CONFIG_DIR/.env"
+    cat <<EOF > "$INSTALL_DIR/.env"
 # Bot Bridge Server Configuration
 PORT=3000
-DB_PATH=$CONFIG_DIR/messages.db
+DB_PATH=$INSTALL_DIR/messages.db
 
 # Add your configuration here
 EOF
-    echo -e "${GREEN}✓ Config file created at $CONFIG_DIR/.env${NC}"
+    echo -e "${GREEN}✓ Config file created at $INSTALL_DIR/.env${NC}"
 fi
 
 echo ""
@@ -114,11 +125,13 @@ echo -e "${GREEN}✅ Bot Bridge Server installed successfully!${NC}"
 echo -e "${GREEN}═════════════════════════════════════════════${NC}"
 echo ""
 echo "📚 Quick Start:"
-echo "   1. Edit configuration: $CONFIG_DIR/.env"
+echo "   1. Edit configuration: $INSTALL_DIR/.env"
 echo "   2. Start server: bot-bridge-server"
+echo "   3. Check health: curl http://localhost:3000/health"
 echo ""
-echo "🌐 Default API: http://localhost:3000"
-echo "📊 Health check: curl http://localhost:3000/health"
+echo "📂 Installation directory: $INSTALL_DIR"
+echo "📖 Documentation: https://github.com/Arismemo/bot-bridge-cli"
+echo "💬 Issues: https://github.com/Arismemo/bot-bridge-cli/issues"
 echo ""
 
 if [[ "$OS" == "linux" ]]; then
@@ -127,7 +140,3 @@ if [[ "$OS" == "linux" ]]; then
     echo "⚙️  Enable auto-start: sudo systemctl enable bot-bridge"
     echo ""
 fi
-
-echo "📖 Documentation: https://github.com/YOUR_USER/bot-bridge"
-echo "💬 Issues: https://github.com/YOUR_USER/bot-bridge/issues"
-echo ""
