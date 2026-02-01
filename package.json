@@ -1,0 +1,27 @@
+{
+  "name": "bot-bridge",
+  "version": "1.0.0",
+  "description": "OpenClaw Bot 互通信中转服务",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "start:client": "node client/index.js",
+    "test": "node tests/test-integration.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "cors": "^2.8.5",
+    "axios": "^1.6.0",
+    "supertest": "^6.3.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "scripts": {
+    "test": "node tests/test-integration.js"
+  },
+  "keywords": ["openclaw", "bot", "bridge"],
+  "author": "Bot Bridge Team",
+  "license": "MIT"
+}
