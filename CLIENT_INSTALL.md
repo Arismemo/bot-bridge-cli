@@ -5,13 +5,19 @@
 Send this message to your OpenClaw bot:
 
 ```
-/install https://github.com/YOUR_USER/bot-bridge
+/install https://github.com/Arismemo/bot-bridge-cli
 ```
 
-Or use the skill directly:
+Or use the Gitee mirror (faster in China):
 
 ```
-Read https://raw.githubusercontent.com/YOUR_USER/bot-bridge/master/SKILL.md and follow instructions
+/install https://gitee.com/john121/bot-bridge-cli
+```
+
+Or use skill directly:
+
+```
+Read https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/SKILL.md and follow instructions
 ```
 
 ## Manual Installation
@@ -51,11 +57,11 @@ const bot = new ContextAwareBot({
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
   telegramChatIds: process.env.TELEGRAM_CHAT_IDS,
   dbPath: './messages.db',
-  
+
   onNewMessage: (message) => {
     console.log('New message:', message);
   },
-  
+
   onDecideReply: ({ message, context }) => {
     // Your reply logic here
     if (message.content === 'hello') {
@@ -104,7 +110,7 @@ const { BotBridgeClient } = require('bot-bridge/client');
 const MockWebSocket = require('bot-bridge/tests/mocks/MockWebSocketClient');
 const MockHttpClient = require('bot-bridge/tests/mocks/MockHttpClient');
 
-const mockWs = new MockWebSocketClient();
+const mockWs = new MockWebSocket();
 const mockHttp = new MockHttpClient();
 
 const client = new BotBridgeClient({
@@ -120,6 +126,8 @@ const client = new BotBridgeClient({
 
 ## Documentation
 
-- [API Reference](https://github.com/YOUR_USER/bot-bridge/wiki/API)
-- [Examples](https://github.com/YOUR_USER/bot-bridge/tree/master/examples)
-- [GitHub Issues](https://github.com/YOUR_USER/bot-bridge/issues)
+- [API Reference](https://github.com/Arismemo/bot-bridge-cli/wiki/API)
+- [Examples](https://github.com/Arismemo/bot-bridge-cli/tree/master/examples)
+- [GitHub Issues](https://github.com/Arismemo/bot-bridge-cli/issues)
+- [Nginx Setup Guide](NGINX_SETUP.md)
+- [README](README.md)
