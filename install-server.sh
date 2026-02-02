@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bot Bridge Server One-Click Install Script
-# Usage: curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/install-server.sh | bash
+# Usage: curl -sSL <url>/install-server.sh | bash
 
 set -e
 
@@ -12,6 +12,30 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+
+# Repository URLs (can be overridden by env)
+REPO_URL="${REPO_URL:-https://github.com/Arismemo/bot-bridge-cli.git}"
+REPO_NAME="${REPO_NAME:-Arismemo/bot-bridge-cli}"
+
+# Detect if running from Gitee
+if [[ "$0" == *"gitee.com"* ]] || [[ "${BASH_SOURCE[0]}" == *"gitee.com"* ]]; then
+    REPO_URL="https://gitee.com/john121/bot-bridge-cli.git"
+    REPO_NAME="john121/bot-bridge-cli"
+    echo "📦 Detected Gitee source, using mirror..."
+fi
+
+# Allow manual override
+if [[ -n "$USE_GITEE" ]]; then
+    REPO_URL="https://gitee.com/john121/bot-bridge-cli.git"
+    REPO_NAME="john121/bot-bridge-cli"
+    echo "📦 Using Gitee mirror..."
+fi
+
+if [[ -n "$USE_GITHUB" ]]; then
+    REPO_URL="https://github.com/Arismemo/bot-bridge-cli.git"
+    REPO_NAME="Arismemo/bot-bridge-cli"
+    echo "📦 Using GitHub..."
+fi
 
 # Detect OS
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
@@ -48,10 +72,10 @@ else
     echo -e "${GREEN}✓ Git installed${NC}"
 fi
 
-# Install bot-bridge from GitHub
+# Install bot-bridge
 INSTALL_DIR="$HOME/.bot-bridge"
 echo ""
-echo "📦 Installing bot-bridge from GitHub to $INSTALL_DIR..."
+echo "📦 Installing bot-bridge from $REPO_URL to $INSTALL_DIR..."
 
 # Remove old installation if exists
 if [[ -d "$INSTALL_DIR" ]]; then
@@ -59,8 +83,31 @@ if [[ -d "$INSTALL_DIR" ]]; then
     rm -rf "$INSTALL_DIR"
 fi
 
-# Clone repository
-git clone https://github.com/Arismemo/bot-bridge-cli.git "$INSTALL_DIR"
+# Clone repository with retries
+MAX_RETRIES=3
+RETRY_DELAY=5
+RETRY_COUNT=0
+
+while [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; do
+    if git clone "$REPO_URL" "$INSTALL_DIR" 2>&1; then
+        echo -e "${GREEN}✓ Repository cloned successfully${NC}"
+        break
+    else
+        RETRY_COUNT=$((RETRY_COUNT + 1))
+        if [[ $RETRY_COUNT -lt $MAX_RETRIES ]]; then
+            echo -e "${YELLOW}Clone failed, retrying in ${RETRY_DELAY}s... (${RETRY_COUNT}/${MAX_RETRIES})${NC}"
+            sleep $RETRY_DELAY
+        else
+            echo -e "${RED}Failed to clone repository after ${MAX_RETRIES} attempts${NC}"
+            echo ""
+            echo "Try manual installation:"
+            echo "  1. git clone $REPO_URL $INSTALL_DIR"
+            echo "  2. cd $INSTALL_DIR"
+            echo "  3. npm install --production"
+            exit 1
+        fi
+    fi
+done
 
 # Install dependencies
 echo "Installing dependencies..."
@@ -125,9 +172,8 @@ echo -e "${GREEN}✅ Bot Bridge Server installed successfully!${NC}"
 echo -e "${GREEN}═════════════════════════════════════════════${NC}"
 echo ""
 echo "📚 Quick Start:"
-echo "   1. Edit configuration: $INSTALL_DIR/.env"
-echo "   2. Start server: bot-bridge-server"
-echo "   3. Check health: curl http://localhost:3000/health"
+echo "   1. Start server: bot-bridge-server"
+echo "   2. Check health: curl http://localhost:3000/health"
 echo ""
 echo "📂 Installation directory: $INSTALL_DIR"
 echo "📖 Documentation: https://github.com/Arismemo/bot-bridge-cli"
@@ -140,3 +186,8 @@ if [[ "$OS" == "linux" ]]; then
     echo "⚙️  Enable auto-start: sudo systemctl enable bot-bridge"
     echo ""
 fi
+
+echo "💡 Tips:"
+echo "   - Use USE_GITEE=1 curl ... | bash to force Gitee mirror"
+echo "   - Use USE_GITHUB=1 curl ... | bash to force GitHub"
+echo ""
