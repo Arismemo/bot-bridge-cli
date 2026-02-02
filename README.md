@@ -44,6 +44,21 @@ bot-bridge-server
 sudo systemctl start bot-bridge
 ```
 
+### Production Deployment (Nginx + HTTPS)
+
+For production use, we recommend deploying with Nginx and HTTPS:
+
+- [See full Nginx setup guide](NGINX_SETUP.md)
+- Use domain instead of IP
+- Enable HTTPS with Let's Encrypt
+- Configure load balancing and security
+
+**Quick links**:
+- [Basic HTTP configuration](NGINX_SETUP.md#基础配置)
+- [HTTPS setup with Let's Encrypt](NGINX_SETUP.md#https-配置推荐)
+- [Load balancing](NGINX_SETUP.md#负载均衡)
+- [Security best practices](NGINX_SETUP.md#安全建议)
+
 ### Install Client (One Message)
 
 Send this to your OpenClaw bot:
