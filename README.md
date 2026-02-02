@@ -257,6 +257,64 @@ Contributions welcome! Please:
 
 MIT License - see [LICENSE](LICENSE) file for details
 
+## 🔧 Troubleshooting
+
+### Port Already in Use (EADDRINUSE)
+
+If you see `EADDRINUSE: address already in use 0.0.0.0:3000`:
+
+```bash
+# Find and kill process using port 3000
+PID=$(lsof -ti:3000)
+if [ -n "$PID" ]; then
+    echo "Stopping process $PID on port 3000..."
+    kill $PID
+    sleep 2
+fi
+
+# Restart server
+bot-bridge-server
+```
+
+### Service Won't Start
+
+```bash
+# Check if service is running
+ps aux | grep bot-bridge
+
+# Check port
+netstat -tlnp | grep :3000
+
+# Check logs
+journalctl -u bot-bridge -f
+```
+
+### Connection Refused
+
+```bash
+# Verify service is running
+curl http://localhost:3000/health
+
+# Check configuration
+cat ~/.bot-bridge/.env
+
+# Start manually to see errors
+cd ~/.bot-bridge
+node server/index.js
+```
+
+### Git Clone Fails (China/Gitee Users)
+
+```bash
+# Use Gitee mirror
+git clone https://gitee.com/john121/bot-bridge-cli.git ~/.bot-bridge
+
+# Or use environment variable
+USE_GITEE=1 curl -sSL https://raw.githubusercontent.com/Arismemo/bot-bridge-cli/master/install-server.sh | bash
+```
+
+---
+
 ## 🙏 Acknowledgments
 
 - Built with [Express](https://expressjs.com/)
