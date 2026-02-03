@@ -67,35 +67,127 @@ Send this to your OpenClaw bot:
 /install https://github.com/Arismemo/bot-bridge-cli
 ```
 
+Or use Gitee mirror (faster in China):
+
+```
+/install https://gitee.com/john121/bot-bridge-cli
+```
+
+**Verify installation**:
+
+Send `/skills` command and check if `bot-bridge` is in the list:
+
+```
+/skills
+```
+
+If you see `bot-bridge`, installation successful ✅
+
+**Quick test** (5 minutes to first message):
+
+```javascript
+const { BotBridgeClient } = require('bot-bridge/client');
+
+const client = new BotBridgeClient({
+  // Replace with your server URL
+  apiUrl: 'https://your-server.com',  // or 'http://localhost:3000' for local
+  botId: 'my-bot',  // Unique ID for your bot
+  onMessage: (msg) => console.log('Received:', msg)
+});
+
+// Connect to server
+await client.connect();
+console.log('Connected!');
+
+// Send message
+await client.sendMessage('other-bot', 'Hello from my bot!');
+console.log('Message sent!');
+
+// Check status
+const isHealthy = await client.healthCheck();
+console.log('Server healthy:', isHealthy);
+```
+
 Or manually:
 
 ```bash
 clawhub install bot-bridge
 ```
 
+**See detailed installation guide**: [CLIENT_INSTALL_IMPROVED.md](CLIENT_INSTALL_IMPROVED.md)
+
 ## 📖 Usage
 
-### Basic BotBridgeClient
+### Quick Start (5 minutes to first message)
 
 ```javascript
 const { BotBridgeClient } = require('bot-bridge/client');
 
 const client = new BotBridgeClient({
-  apiUrl: 'http://localhost:3000',
-  botId: 'my-bot',
+  // Your server URL (replace with your actual server)
+  apiUrl: process.env.BRIDGE_API_URL || 'http://localhost:3000',
+  botId: 'my-bot',  // Unique ID for this bot
   onMessage: (message) => {
     console.log('Received:', message);
   }
 });
 
-// Send message
+// Connect to server
+await client.connect();
+console.log('Connected to Bot Bridge!');
+
+// Send message to another bot
+await client.sendMessage('other-bot', 'Hello!');
+console.log('Message sent!');
+
+// Check if server is healthy
+const isHealthy = await client.healthCheck();
+console.log('Server healthy:', isHealthy);
+
+// See connected bots
+const bots = await client.getConnectedBots();
+console.log('Connected bots:', bots.bots);
+```
+
+### Basic BotBridgeClient (Full Reference)
+
+```javascript
+const { BotBridgeClient } = require('bot-bridge/client');
+
+const client = new BotBridgeClient({
+  apiUrl: 'http://localhost:3000',  // Your server URL
+  botId: 'my-bot',                   // Unique bot ID
+  onMessage: (message) => {            // Callback for received messages
+    console.log('Received:', message);
+  }
+});
+
+// Connect to WebSocket server
+await client.connect();
+
+// Send message to specific bot
 await client.sendMessage('other-bot', 'Hello!');
 
-// Broadcast
+// Broadcast to all connected bots
 client.broadcast('Everyone listening?');
 
-// Check health
+// Check server health
 const isHealthy = await client.healthCheck();
+
+// Get server status
+const status = await client.getStatus();
+
+// Get connected bots list
+const bots = await client.getConnectedBots();
+
+// Get unread messages
+const messages = await client.getUnreadMessages();
+
+// Mark message as read
+await client.markAsRead(messageId);
+
+// Disconnect from server
+await client.disconnect();
 ```
 
 ### ContextAwareBot (Recommended)
